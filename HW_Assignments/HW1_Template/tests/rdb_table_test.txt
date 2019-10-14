@@ -1,0 +1,15 @@
+q= select * from people where playerID="1234" 
+()
+q= select * from people where playerId="aaronto01" 
+[{"playerID": "aaronto01", "birthYear": "1939", "birthMonth": "8", "birthDay": "16", "birthCountry": "USA", "birthState": "AL", "birthCity": "Mobile", "deathYear": "1984", "deathMonth": "8", "deathDay": "16", "deathCountry": "USA", "deathState": "GA", "deathCity": "Atlanta", "nameFirst": "Tommie", "nameLast": "Aaron", "nameGiven": "Tommie Lee", "weight": "190", "height": "75", "bats": "R", "throws": "R", "debut": "1962-04-10", "finalGame": "1971-09-26", "retroID": "aarot101", "bbrefID": "aaronto01\r"}]
+q= delete from people where playerId="acunaro01" 
+0
+q= delete from people where birthDay="11" 
+0
+q= update people set birthDay = "13" where playerId="aaronto01" 
+1
+q= update people set birthDay = "16" where playerID="aaronto01" 
+1
+q= insert into people (playerID) values ("1234")
+q= select * from people
+19026

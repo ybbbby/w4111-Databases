@@ -1,7 +1,7 @@
 # I write and test methods one at a time.
 # This file contains unit tests of individual methods.
 
-from src.CSVDataTable import CSVDataTable
+from HW1_Template.src.CSVDataTable import CSVDataTable
 import logging
 import os
 

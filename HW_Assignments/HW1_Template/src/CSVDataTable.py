@@ -1,5 +1,4 @@
-
-from src.BaseDataTable import BaseDataTable
+from HW1_Template.src.BaseDataTable import BaseDataTable
 import copy
 import csv
 import logging
@@ -9,6 +8,7 @@ import pandas as pd
 
 pd.set_option("display.width", 256)
 pd.set_option('display.max_columns', 20)
+
 
 class CSVDataTable(BaseDataTable):
     """
@@ -55,13 +55,13 @@ class CSVDataTable(BaseDataTable):
             rows_to_print = self._rows[0:temp_r]
             keys = self._rows[0].keys()
 
-            for i in range(0,CSVDataTable._no_of_separators):
+            for i in range(0, CSVDataTable._no_of_separators):
                 tmp_row = {}
                 for k in keys:
                     tmp_row[k] = "***"
                 rows_to_print.append(tmp_row)
 
-            rows_to_print.extend(self._rows[int(-1*temp_r)-1:-1])
+            rows_to_print.extend(self._rows[int(-1 * temp_r) - 1:-1])
 
         df = pd.DataFrame(rows_to_print)
         result += "\nSome Rows: = \n" + str(df)
@@ -74,16 +74,28 @@ class CSVDataTable(BaseDataTable):
         self._rows.append(r)
 
     def _load(self):
-
         dir_info = self._data["connect_info"].get("directory")
         file_n = self._data["connect_info"].get("file_name")
+        delimiter_n=self._data["connect_info"].get("delimiter")
         full_name = os.path.join(dir_info, file_n)
 
         with open(full_name, "r") as txt_file:
-            csv_d_rdr = csv.DictReader(txt_file)
+            if delimiter_n is None:
+                csv_d_rdr = csv.DictReader(txt_file)
+                df = pd.read_csv(full_name)
+            else:
+                csv_d_rdr = csv.DictReader(txt_file,delimiter=delimiter_n)
+                df = pd.read_csv(full_name, delimiter=delimiter_n)
+            dup = df.duplicated(self._data["key_columns"])
+            for k in dup:
+                if k != False:
+                    raise Exception('key is not unique')
             for r in csv_d_rdr:
                 self._add_row(r)
-
+        txt_file.close()
+        self._key=[]
+        for k in self._rows[0]:
+            self._key.append(k)
         self._logger.debug("CSVDataTable._load: Loaded " + str(len(self._rows)) + " rows")
 
     def save(self):
@@ -91,10 +103,26 @@ class CSVDataTable(BaseDataTable):
         Write the information back to a file.
         :return: None
         """
+        dir_info = self._data["connect_info"].get("directory")
+        file_n = self._data["connect_info"].get("file_name")
+        full_name = os.path.join(dir_info, file_n)
+        with open(full_name, "w") as txt_file:
+            if self._data["connect_info"].get("delimiter") is None:
+                csv_d_wr = csv.DictWriter(txt_file,fieldnames=self._key)
+            else:
+                csv_d_wr = csv.DictWriter(txt_file,fieldnames=self._key,delimiter=self._data["connect_info"].get("delimiter"))
+            csv_d_wr.writeheader()
+            csv_d_wr.writerows(self._rows)
+        txt_file.close()
+
+    def key_to_template(self, key):
+        tmp = {}
+        for k in range(len(self._data['key_columns'])):
+            tmp[self._data['key_columns'][k]]= key[k]
+        return tmp
 
     @staticmethod
     def matches_template(row, template):
-
         result = True
         if template is not None:
             for k, v in template.items():
@@ -112,7 +140,9 @@ class CSVDataTable(BaseDataTable):
         :return: None, or a dictionary containing the requested fields for the record identified
             by the key.
         """
-        pass
+        tem = self.key_to_template(key_fields)
+        result = self.find_by_template(tem)
+        return result
 
     def find_by_template(self, template, field_list=None, limit=None, offset=None, order_by=None):
         """
@@ -125,7 +155,11 @@ class CSVDataTable(BaseDataTable):
         :return: A list containing dictionaries. A dictionary is in the list representing each record
             that matches the template. The dictionary only contains the requested fields.
         """
-        pass
+        result = []
+        for r in self._rows:
+            if self.matches_template(r, template):
+                result.append(r)
+        return result
 
     def delete_by_key(self, key_fields):
         """
@@ -135,7 +169,9 @@ class CSVDataTable(BaseDataTable):
         :param template: A template.
         :return: A count of the rows deleted.
         """
-        pass
+        tem = self.key_to_template(key_fields)
+        result = self.delete_by_template(tem)
+        return result
 
     def delete_by_template(self, template):
         """
@@ -143,7 +179,11 @@ class CSVDataTable(BaseDataTable):
         :param template: Template to determine rows to delete.
         :return: Number of rows deleted.
         """
-        pass
+        result = self.find_by_template(template)
+        for r in result:
+            self._rows.remove(r)
+        self.save()
+        return len(result)
 
     def update_by_key(self, key_fields, new_values):
         """
@@ -152,6 +192,9 @@ class CSVDataTable(BaseDataTable):
         :param new_values: A dict of field:value to set for updated row.
         :return: Number of rows updated.
         """
+        tem = self.key_to_template(key_fields)
+        result = self.update_by_template(tem, new_values)
+        return result
 
     def update_by_template(self, template, new_values):
         """
@@ -160,7 +203,36 @@ class CSVDataTable(BaseDataTable):
         :param new_values: New values to set for matching fields.
         :return: Number of rows updated.
         """
-        pass
+        result = self.find_by_template(template)
+        Nsave = []
+        Ndelete=[]
+        for r in result:
+            self._rows.remove(r)
+            Nsave.append(r)
+            for k, v in new_values:
+                r[k] = v
+            self._rows.append(r)
+            Ndelete.append(r)
+        self.save()
+        dir_info = self._data["connect_info"].get("directory")
+        file_n = self._data["connect_info"].get("file_name")
+        delimiter_n = self._data["connect_info"].get("delimiter")
+        full_name = os.path.join(dir_info, file_n)
+        with open(full_name, "r") as txt_file:
+            if delimiter_n is None:
+                df = pd.read_csv(full_name)
+            else:
+                df = pd.read_csv(full_name, delimiter=delimiter_n)
+            dup = df.duplicated(self._data["key_columns"])
+            for k in dup:
+                if k != False:
+                    for d in Ndelete:
+                        self._rows.remove(d)
+                    for s in Nsave:
+                        self._rows.append(s)
+                    self.save()
+                    raise Exception('key is not unique')
+        return len(result)
 
     def insert(self, new_record):
         """
@@ -168,8 +240,23 @@ class CSVDataTable(BaseDataTable):
         :param new_record: A dictionary representing a row to add to the set of records.
         :return: None
         """
-        pass
+        self._rows.append(new_record)
+        self.save()
+        dir_info = self._data["connect_info"].get("directory")
+        file_n = self._data["connect_info"].get("file_name")
+        delimiter_n = self._data["connect_info"].get("delimiter")
+        full_name = os.path.join(dir_info, file_n)
+        with open(full_name, "r") as txt_file:
+            if delimiter_n is None:
+                df = pd.read_csv(full_name)
+            else:
+                df = pd.read_csv(full_name, delimiter=delimiter_n)
+            dup = df.duplicated(self._data["key_columns"])
+            for k in dup:
+                if k != False:
+                    self._rows.remove(new_record)
+                    self.save()
+                    raise Exception('key is not unique')
 
     def get_rows(self):
         return self._rows
-

@@ -1,0 +1,3 @@
+For RDB part, first connect to local mysql database. Then, each api just convert the dictionary to a string, a string that database manager could execuate. Then call pymysql's execuate API to execually execute the query. Any conflict would rasied by mysql database. 
+
+For csv part, the core function is find_by_template, which is shown in the lecture. Then design a convert key to template function so that all params could be transfer to template. To check the uniqueness of primary key, I call panadas' api to check the file. So everytime the save() function is called, I would load again to make sure the query execuated is valid.
