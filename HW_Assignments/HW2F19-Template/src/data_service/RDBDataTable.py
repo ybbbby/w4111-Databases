@@ -42,21 +42,31 @@ class RDBDataTable():
     _default_connect_info = {
         'host': 'localhost',
         'user': 'root',
-        'password': 'dbuserdbuser',
-        'db': 'lahman2019clean',
+        'password': 'Summer657703',
+        'db': 'lahman',
         'port': 3306
     }
 
     _rows_to_print = 5
 
-    def __init__(self, table_name, db_name, key_columns=None, connect_info=None, debug=True):
+
+    def __init__(self, table_name=None, db_name=None, key_columns=None, connect_info=None, debug=True):
         """
 
         :param table_name: The name of the RDB table.
         :param connect_info: Dictionary of parameters necessary to connect to the data.
         :param key_columns: List, in order, of the columns (fields) that comprise the primary key.
         """
-
+        if table_name is None:
+            super().__init__()
+            self._cnx = pymysql.connect(
+                host=self._default_connect_info['host'],
+                user=self._default_connect_info['user'],
+                password=self._default_connect_info['password'],
+                db=self._default_connect_info['db'],
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.DictCursor)
+            return
         # RDBDataTable is not told the keys. It can extract from the schema using DML statememts.
         if key_columns is not None:
             raise ValueError("RDBs know the keys. You should set in the DB use DML."
@@ -125,17 +135,17 @@ class RDBDataTable():
 
         :return: Returns the count of the number of rows in the table.
         """
-
         # -- TO IMPLEMENT --
-
+        q = "select count(*) "+"from " + self._full_table_name
+        self._row_count = pd.read_sql(q, self._cnx).iloc[0]['count(*)']
     def get_primary_key_columns(self):
         """
 
         :return: A list of the primary key columns ordered by their position in the key.
         """
-
         # -- TO IMPLEMENT --
-
+        q = "SHOW KEYS from " + self._full_table_name + " WHERE Key_name = 'PRIMARY'"
+        self._key_columns = pd.read_sql(q, self._cnx).sort_values(by=['Seq_in_index'], ascending=True)['Column_name'].tolist()
         # Hint. Google "get primary key columns mysql"
         # Hint. THE ORDER OF THE COLUMNS IN THE KEY DEFINITION MATTERS.
 
@@ -172,9 +182,11 @@ class RDBDataTable():
     # THE METHODS BELOW ARE BASICALLY THE SOLUTION TO THE RDB PART OF HW1
     #
     #
-    def find_by_primary_key(self, key_fields, field_list=None):
+    def find_by_primary_key(self, key_fields, field_list=None, limit=None, offset=None):
         """
 
+        :param offset:
+        :param limit:
         :param key_fields: The values for the key_columns, in order, to use to find a record.
         :param field_list: A subset of the fields of the record to return.
         :return: None, or a dictionary containing the request fields for the record identified
@@ -189,7 +201,7 @@ class RDBDataTable():
         tmp = dict(zip(key_columns, key_fields))
 
         # Call find_by_template.
-        result = self.find_by_template(tmp, field_list)
+        result = self.find_by_template(tmp, field_list,limit=limit,offset=offset)
 
         if result is not None and len(result) > 0:
             result = result[0]
@@ -213,7 +225,7 @@ class RDBDataTable():
         result = None
 
         try:
-            sql, args = dbutils.create_select(self._full_table_name, template=template, fields=field_list)
+            sql, args = dbutils.create_select(self._full_table_name, template=template,limit=limit,offset=offset, fields=field_list)
             res, data = dbutils.run_q(sql=sql, args=args, conn=self._cnx, commit=True, fetch=True)
         except Exception as e:
             print("Exception e = ", e)
@@ -316,3 +328,9 @@ class RDBDataTable():
         #
         pass
 
+    def get_databases(self):
+        q = 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA'
+        return pd.read_sql(q, self._cnx)['SCHEMA_NAME'].to_list()
+    def get_tables(self,dbname):
+        q="SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA='"+dbname+"'"
+        return pd.read_sql(q,self._cnx)['TABLE_NAME'].to_list()

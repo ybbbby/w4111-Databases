@@ -87,7 +87,6 @@ def template_to_where_clause(template):
     :param template: One of those weird templates
     :return: WHERE clause corresponding to the template.
     """
-
     if template is None or template == {}:
         result = ("", None)
     else:
@@ -134,7 +133,8 @@ def create_select(table_name, template, fields=None, order_by=None, limit=None, 
         sql = "select " + field_list + " from " +  table_name + " " + w_clause
     else:
         sql = "delete from " + table_name + " " + w_clause
-
+    if limit:
+        sql += ' limit '+ limit +' offset '+offset
     return (sql, args)
 
 
@@ -149,7 +149,7 @@ def create_insert(table_name, new_row):
     args = list(new_row.values())
 
     s_stuff = ["%s"]*len(args)
-    s_clause = ",".join(s_stuff)
+    s_clause = ','.join(s_stuff)
     v_clause = " values(" + s_clause + ")"
 
     sql += " " + col_clause + " " + v_clause

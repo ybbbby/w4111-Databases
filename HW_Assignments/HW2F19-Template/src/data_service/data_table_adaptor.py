@@ -6,7 +6,6 @@ import src.data_service.RDBDataTable as RDBDataTable
 # It is inefficient to create an instance of RDBDataTable for each request.  This is a cache of created
 # instances.
 _db_tables = {}
-
 def get_rdb_table(table_name, db_name, key_columns=None, connect_info=None):
     """
 
@@ -51,14 +50,29 @@ def get_databases():
 
     :return: A list of databases/schema at this endpoint.
     """
-
-    # -- TO IMPLEMENT --
-    pass
-
-
-
-
-
+    return RDBDataTable.RDBDataTable().get_databases()
+def get_tables(dbname):
+    return RDBDataTable.RDBDataTable().get_tables(dbname)
+def getDataByKey(resource,dbname,primary_key,filed=None,limit=None,offset=None):
+    key = dbname + "." + resource
+    db_table = _db_tables[key]
+    return db_table.find_by_primary_key(primary_key,filed,limit,offset)
+def deleteDataByKey(resource,dbname,primary_key):
+    key = dbname + "." + resource
+    db_table = _db_tables[key]
+    return db_table.delete_by_key(primary_key)
+def updateDataByKey(resource, dbname, primary_key, data):
+    key = dbname + "." + resource
+    db_table = _db_tables[key]
+    return db_table.update_by_key(primary_key, data)
+def getDataByTem(resource,dbname,request,field,limit=None,offset=None):
+    key = dbname + "." + resource
+    db_table = _db_tables[key]
+    return db_table.find_by_template(request, field,limit,offset)
+def insert(resource, dbname, body):
+    key = dbname + "." + resource
+    db_table = _db_tables[key]
+    return db_table.insert(body)
 
 
 
